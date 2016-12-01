@@ -554,10 +554,10 @@ function formatSpawnTime (seconds) {
 function spawnpointLabel (item) {
   var str = `
     <div>
-      <b>Spawn Point ${item.spawnpoint_id}</b>
+      <b>Spawn Point</b> <code>${item.spawnpoint_id}</code>
     </div>
     <div>
-      <b>Coords: ${item.latitude},${item.longitude}</b>
+      <b>Coords:</b> <code>${item.latitude},${item.longitude}</code>
     </div>
     <div>
       Every hour from ${formatSpawnTime(item.time)} to ${formatSpawnTime(item.time + 1800)}
