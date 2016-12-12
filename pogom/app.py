@@ -38,6 +38,7 @@ class Pogom(Flask):
         self.route("/status", methods=['GET'])(self.get_status)
         self.route("/status", methods=['POST'])(self.post_status)
         self.route("/gym_data", methods=['GET'])(self.get_gymdata)
+        self.route("/geofency_wh", methods=['POST'])(self.post_geofency_wh)
         self.route("/inject.js", methods=['GET'])(self.render_inject_js)
         self.route("/add_token", methods=['GET'])(self.add_token)
         self.route("/get_token", methods=['GET'])(self.get_token)
@@ -82,6 +83,9 @@ class Pogom(Flask):
 
     def set_current_location(self, location):
         self.current_location = location
+
+    def set_wh_updates_queue(self, wh_updates_queue):
+        self.whq = wh_updates_queue
 
     def get_search_control(self):
         return jsonify({'status': not self.search_control.is_set()})
@@ -414,6 +418,33 @@ class Pogom(Flask):
         else:
             d['login'] = 'failed'
         return jsonify(d)
+
+    def post_geofency_wh(self):
+        args = get_args()
+        if args.fixed_location:
+            return 'Location changes are turned off', 403
+
+        entry = request.form.get('entry')
+
+        # trigger only when entering locations
+        if entry == '1':
+            lat = request.form.get('latitude', type=float)
+            lon = request.form.get('longitude', type=float)
+            if not (lat and lon):
+                log.warning('Invalid next location: %s,%s', lat, lon)
+                return 'bad parameters', 400
+            else:
+                self.location_queue.put((lat, lon, 0))
+                self.set_current_location((lat, lon, 0))
+                log.info('Changing next location: %s,%s', lat, lon)
+
+                # Geofency specific things
+                name = request.form.get('name')
+                device = request.form.get('device')
+                self.whq.put(('location', {'latitude': lat, 'longitude': lon}))
+                log.info('Queued next location for webhooks. Name: %s - Device: %s', name, device)
+
+                return self.loc()
 
 
 class CustomJSONEncoder(JSONEncoder):
