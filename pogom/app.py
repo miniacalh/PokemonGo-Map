@@ -85,7 +85,7 @@ class Pogom(Flask):
         self.current_location = location
 
     def set_wh_updates_queue(self, wh_updates_queue):
-        self.whq = wh_updates_queue
+        self.wh_updates_queue = wh_updates_queue
 
     def get_search_control(self):
         return jsonify({'status': not self.search_control.is_set()})
@@ -440,9 +440,8 @@ class Pogom(Flask):
 
                 # Geofency specific things
                 name = request.form.get('name')
-                device = request.form.get('device')
-                self.whq.put(('location', {'latitude': lat, 'longitude': lon}))
-                log.info('Queued next location for webhooks. Name: %s - Device: %s', name, device)
+                self.wh_updates_queue.put(('location', {'latitude': lat, 'longitude': lon}))
+                log.info('Queued next location "%s" for webhooks', name)
 
                 return self.loc()
 
