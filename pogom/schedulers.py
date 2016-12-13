@@ -242,6 +242,13 @@ class HexSearchSpawnpoint(HexSearch):
         locations = [coords for coords in locations if self._any_spawnpoints_in_range(coords[1], spawnpoints)]
         return locations
 
+    def schedule(self):
+        # recreate locations after every complete run
+        if self.args.only_unvalid:
+            self.locations = False
+
+        super(HexSearchSpawnpoint, self).schedule()
+
 
 # Spawn Scan searches known spawnpoints at the specific time they spawn.
 class SpawnScan(BaseScheduler):
