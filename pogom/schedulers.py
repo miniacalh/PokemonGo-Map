@@ -467,7 +467,7 @@ class SpeedScan(HexSearch):
         log.info('If wait is too long, reduce the -st size and complete intial scan before increasing -st again.')
         scan_spawn_point = {}
         # If upgraded DB to delete old ScanSpawnPoint table, may need to force spawn point linking
-        force = len(spawnpoints) and not len(ScanSpawnPoint.select())
+        force = len(spawnpoints) and not len(ScanSpawnPoint.get_all())
         ScannedLocation.link_spawn_points(scans, initial, spawnpoints, self.step_distance, scan_spawn_point, force)
         if len(scan_spawn_point):
             log.info('%d relations found between the spawn points and steps', len(scan_spawn_point))

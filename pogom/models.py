@@ -1175,8 +1175,8 @@ class ScanSpawnPoint(BaseModel):
     # scannedlocation = ForeignKeyField(ScannedLocation)
     # spawnpoint = ForeignKeyField(SpawnPoint)
 
-    scannedlocation = ForeignKeyField(ScannedLocation)
-    spawnpoint = ForeignKeyField(SpawnPoint)
+    scannedlocation = ForeignKeyField(ScannedLocation, null=True)
+    spawnpoint = ForeignKeyField(SpawnPoint, null=True)
 
     class Meta:
         primary_key = CompositeKey('spawnpoint', 'scannedlocation')
@@ -1740,7 +1740,7 @@ def parse_map(args, map_dict, step_location, db_update_queue, wh_update_queue, a
     }
 
 
-def parse_gyms(args, gym_responses, wh_update_queue):
+def parse_gyms(args, gym_responses, wh_update_queue, db_update_queue):
     gym_details = {}
     gym_members = {}
     gym_pokemon = {}
@@ -1837,11 +1837,11 @@ def parse_gyms(args, gym_responses, wh_update_queue):
 
     # Upsert all the models.
     if len(gym_details):
-        bulk_upsert(GymDetails, gym_details)
+        db_update_queue.put((GymDetails, gym_details))
     if len(gym_pokemon):
-        bulk_upsert(GymPokemon, gym_pokemon)
+        db_update_queue.put((GymPokemon, gym_pokemon))
     if len(trainers):
-        bulk_upsert(Trainer, trainers)
+        db_update_queue.put((Trainer, trainers))
 
     # This needs to be completed in a transaction, because we don't wany any other thread or process
     # to mess with the GymMembers for the gyms we're updating while we're updating the bridge table.
@@ -1852,14 +1852,14 @@ def parse_gyms(args, gym_responses, wh_update_queue):
 
         # Insert new gym members.
         if len(gym_members):
-            bulk_upsert(GymMember, gym_members)
+            db_update_queue.put((GymMember, gym_members))
 
     log.info('Upserted %d gyms and %d gym members',
              len(gym_details),
              len(gym_members))
 
 
-def db_updater(args, q):
+def db_updater(args, q, db):
     # The forever loop.
     while True:
         try:
@@ -1874,7 +1874,7 @@ def db_updater(args, q):
             # Loop the queue.
             while True:
                 model, data = q.get()
-                bulk_upsert(model, data)
+                bulk_upsert(model, data, db)
                 q.task_done()
                 log.debug('Upserted to %s, %d records (upsert queue remaining: %d)',
                           model.__name__,
@@ -1922,7 +1922,7 @@ def clean_db_loop(args):
             log.exception('Exception in clean_db_loop: %s', e)
 
 
-def bulk_upsert(cls, data):
+def bulk_upsert(cls, data, db):
     num_rows = len(data.values())
     i = 0
 
@@ -1936,7 +1936,10 @@ def bulk_upsert(cls, data):
     while i < num_rows:
         log.debug('Inserting items %d to %d', i, min(i + step, num_rows))
         try:
+            # MySQL has issues with 
+            db.execute_sql('SET FOREIGN_KEY_CHECKS=0;')
             InsertQuery(cls, rows=data.values()[i:min(i + step, num_rows)]).upsert().execute()
+            db.execute_sql('SET FOREIGN_KEY_CHECKS=1;')
         except Exception as e:
             # if there is a DB table constraint error, dump the data and don't retry
             # unrecoverable error strings:
