@@ -1941,12 +1941,12 @@ def bulk_upsert(cls, data, db):
             # thus giving lots of foreign key constraint errors
             if args.db_type == 'mysql':
                 db.execute_sql('SET FOREIGN_KEY_CHECKS=0;')
-    
+
             InsertQuery(cls, rows=data.values()[i:min(i + step, num_rows)]).upsert().execute()
-    
+
             if args.db_type == 'mysql':
                 db.execute_sql('SET FOREIGN_KEY_CHECKS=1;')
-    
+
         except Exception as e:
             # if there is a DB table constraint error, dump the data and don't retry
             # unrecoverable error strings:
