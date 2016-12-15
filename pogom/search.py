@@ -493,7 +493,9 @@ def perform_map_request(args, status, api, step_location):
     response_dict = False
 
     while retries < max_retries:
-        is_last_retry = retries == max_retries - 1
+        # actually increase the retry counter
+        retries += 1
+        is_last_retry = retries == max_retries
 
         scan_date = datetime.utcnow()
         response_dict = map_request(api, step_location, args.jitter)
@@ -502,7 +504,7 @@ def perform_map_request(args, status, api, step_location):
             if is_last_retry:
                 status['message'] = 'Invalid response. Retried {} times. Giving up.'.format(max_retries)
             else:
-                status['message'] = 'Invalid response. Retrying {} more times.'.format(max_retries - retries - 1)
+                status['message'] = 'Invalid response. Retrying {} more times.'.format(max_retries - retries)
             log.error(status['message'])
         else:
             # if captcha we don't need to retry
@@ -520,7 +522,7 @@ def perform_map_request(args, status, api, step_location):
             if is_last_retry:
                 status['message'] = 'Got empty response. Retried {} times. Giving up.'.format(max_retries)
             else:
-                status['message'] = 'Got empty response. Retrying {} more times.'.format(max_retries - retries - 1)
+                status['message'] = 'Got empty response. Retrying {} more times.'.format(max_retries - retries)
             log.warning(status['message'])
 
         # wait constant time (ignoring scan-delay)
