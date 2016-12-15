@@ -233,6 +233,7 @@ def main():
 
     # WH Updates.
     wh_updates_queue = Queue()
+    app.set_wh_updates_queue(wh_updates_queue)
 
     # Thread to process webhook updates.
     for i in range(args.wh_threads):
