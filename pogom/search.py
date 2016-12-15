@@ -715,7 +715,7 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                             else:
                                 status['message'] = 'Account {} is encountering a captcha, starting manual captcha solving'.format(account['username'])
                                 if notify_webhook:
-                                    whq.put(('captcha', {'account': status['user'], 'status': 'encounter', 'token_needed': token_needed}))
+                                    whq.put(('captcha', {'account': account['username'], 'status': 'encounter', 'token_needed': token_needed}))
                             log.warning(status['message'])
                             captcha_token = token_request(args, status, captcha_url, whq)
                             if 'ERROR' in captcha_token:
@@ -728,7 +728,7 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                                 account_failures.append({'account': account, 'last_fail_time': now(),
                                                          'reason': 'timeout waiting for manual captcha token'})
                                 if notify_webhook:
-                                    whq.put(('captcha', {'account': status['user'], 'status': 'timeout',
+                                    whq.put(('captcha', {'account': account['username'], 'status': 'timeout',
                                                          'token_needed': token_needed}))
                                 break
                             else:
@@ -740,7 +740,7 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                                     log.info(status['message'])
                                     scan_date = datetime.utcnow()
                                     if notify_webhook:
-                                        whq.put(('captcha', {'account': status['user'], 'status': 'solved', 'token_needed': token_needed}))
+                                        whq.put(('captcha', {'account': account['username'], 'status': 'solved', 'token_needed': token_needed}))
                                     # Make another request for the same coordinate since the previous one was captcha'd
                                     response_dict, scan_date = perform_map_request(args, status, api, step_location)
                                     status['last_scan_date'] = scan_date
@@ -748,7 +748,7 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                                     status['message'] = "Account {} failed verifyChallenge, putting away account for now".format(account['username'])
                                     log.info(status['message'])
                                     if notify_webhook:
-                                        whq.put(('captcha', {'account': status['user'], 'status': 'failed', 'token_needed': token_needed}))
+                                        whq.put(('captcha', {'account': account['username'], 'status': 'failed', 'token_needed': token_needed}))
                                     account_failures.append({'account': account, 'last_fail_time': now(), 'reason': 'catpcha failed to verify'})
                                     break
 
