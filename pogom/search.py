@@ -486,6 +486,50 @@ def generate_hive_locations(current_location, step_distance, step_limit, hive_co
     return results
 
 
+def perform_map_request(args, status, api, step_location):
+    retries = 0
+    max_retries = 3
+    scan_date = datetime.utcnow()
+    response_dict = False
+
+    while retries < max_retries:
+        is_last_retry = retries == max_retries - 1
+
+        scan_date = datetime.utcnow()
+        response_dict = map_request(api, step_location, args.jitter)
+
+        if not response_dict:
+            if is_last_retry:
+                status['message'] = 'Invalid response. Retried {} times. Giving up.'.format(max_retries)
+            else:
+                status['message'] = 'Invalid response. Retrying {} more times.'.format(max_retries - retries - 1)
+            log.error(status['message'])
+        else:
+            # if captcha we don't need to retry
+            if len(response_dict['responses']['CHECK_CHALLENGE']['challenge_url']) > 1:
+                return response_dict, scan_date
+
+            # check for empty response
+            # no pokemon -> possible speed violation -> retry!
+            cells = response_dict['responses']['GET_MAP_OBJECTS']['map_cells']
+            for cell in cells:
+                # immediately return if any pokemon was found
+                if len(cell.get('wild_pokemons', [])) or len(cell.get('nearby_pokemons', [])):
+                    return response_dict, scan_date
+
+            if is_last_retry:
+                status['message'] = 'Got empty response. Retried {} times. Giving up.'.format(max_retries)
+            else:
+                status['message'] = 'Got empty response. Retrying {} more times.'.format(max_retries - retries - 1)
+            log.warning(status['message'])
+
+        # wait constant time (ignoring scan-delay)
+        if not is_last_retry:
+            time.sleep(12)
+
+    return response_dict, scan_date
+
+
 def search_worker_thread(args, account_queue, account_failures, search_items_queue, pause_bit, status, dbq, whq, scheduler):
 
     log.debug('Search worker thread starting')
@@ -639,9 +683,8 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                 log.info(status['message'])
 
                 # Make the actual request. (finally!)
-                scan_date = datetime.utcnow()
-                response_dict = map_request(api, step_location, args.jitter)
-                status['last_scan_date'] = datetime.utcnow()
+                response_dict, scan_date = perform_map_request(args, status, api, step_location)
+                status['last_scan_date'] = scan_date
 
                 # Record the time and place the worker made the request at
                 status['latitude'] = step_location[0]
@@ -699,8 +742,8 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                                     if notify_webhook:
                                         whq.put(('captcha', {'account': status['user'], 'status': 'solved', 'token_needed': token_needed}))
                                     # Make another request for the same coordinate since the previous one was captcha'd
-                                    response_dict = map_request(api, step_location, args.jitter)
-                                    status['last_scan_date'] = datetime.utcnow()
+                                    response_dict, scan_date = perform_map_request(args, status, api, step_location)
+                                    status['last_scan_date'] = scan_date
                                 else:
                                     status['message'] = "Account {} failed verifyChallenge, putting away account for now".format(account['username'])
                                     log.info(status['message'])
