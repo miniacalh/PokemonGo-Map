@@ -694,7 +694,7 @@ def search_worker_thread(args, account_queue, account_failures, search_items_que
                     status['fail'] += 1
                     consecutive_fails += 1
                     # consecutive_noitems = 0 - I propose to leave noitems counter in case of error
-                    status['message'] = 'Map parse failed at {:6f},{:6f}, abandoning location. {} may be banned.'.format(step_location[0], step_location[1], account['username'])
+                    status['message'] = 'Map parse failed at {:6f},{:6f} with "{}", abandoning location. {} may be banned.'.format(step_location[0], step_location[1], repr(e), account['username'])
                     log.exception('{}. Exception message: {}'.format(status['message'], e))
 
                 # Get detailed information about gyms.
