@@ -43,6 +43,7 @@ class Pogom(Flask):
         self.route("/add_token", methods=['GET'])(self.add_token)
         self.route("/get_token", methods=['GET'])(self.get_token)
         self.route("/bookmarklet", methods=['GET'])(self.get_bookmarklet)
+        self.route("/needs_captchas", methods=['GET'])(self.needs_captchas)
 
     def get_bookmarklet(self):
         return render_template('bookmarklet.html')
@@ -283,7 +284,18 @@ class Pogom(Flask):
             elif request.args.get('password', None) == args.status_page_password:
                 d['main_workers'] = MainWorker.get_all()
                 d['workers'] = WorkerStatus.get_all()
+
+        
         return jsonify(d)
+
+    def needs_captchas(self):
+         d = {}
+
+         #check for captchas
+         d['needs_captcha'] = WorkerStatus.get_needs_captcha()
+
+         return jsonify(d)
+        
 
     def loc(self):
         d = {}

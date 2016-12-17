@@ -1034,6 +1034,16 @@ function loadRawData () {
   })
 }
 
+function loadNeedsCaptchas()
+{
+  return $.ajax({
+    url: 'needs_captchas',
+    type: 'GET',
+    dataType: 'json',
+    cache:false
+  })
+}
+
 function processPokemons (i, item) {
   if (!Store.get('showPokemon')) {
     return false // in case the checkbox was unchecked in the meantime.
@@ -1207,6 +1217,7 @@ function updateMap () {
     $.each(result.gyms, processGyms)
     $.each(result.scanned, processScanned)
     $.each(result.spawnpoints, processSpawnpoints)
+    
     showInBoundsMarkers(mapData.pokemons, 'pokemon')
     showInBoundsMarkers(mapData.lurePokemons, 'pokemon')
     showInBoundsMarkers(mapData.gyms, 'gym')
@@ -1242,6 +1253,32 @@ function updateMap () {
     timestamp = result.timestamp
     lastUpdateTime = Date.now()
   })
+}
+
+
+var captchaMap = {}
+function checkCaptchas (){
+  console.log('checkCaptchas - captcha map:', captchaMap)
+  loadNeedsCaptchas().done(function (result){
+    console.log("checkCaptchas: ", result)
+    $.each(result.needs_captcha, processCaptchas)
+    buildCaptchaMap(result)
+  })
+}
+
+function processCaptchas(i, item){
+  console.log('processCaptchas i:', i, ' item:', item)
+  if (!(item.username in captchaMap)) {
+    sendCaptchaNotification(item.username, item.message)
+  }
+}
+
+function buildCaptchaMap(result){
+  captchaMap = {}
+  $.each(result.needs_captcha, function(i, item){
+    captchaMap[item.username] = item
+  })
+   console.log('buildCaptchaMap i:', captchaMap)
 }
 
 function drawScanPath (points) { // eslint-disable-line no-unused-vars
@@ -1327,6 +1364,31 @@ function sendNotification (title, text, icon, lat, lng) {
       notification.close()
 
       centerMap(lat, lng, 20)
+    }
+  }
+}
+
+function sendCaptchaNotification (title, text, icon) {
+  if (!('Notification' in window)) {
+    return false // Notifications are not present in browser
+  }
+
+  if (Notification.permission !== 'granted') {
+    Notification.requestPermission()
+  } 
+  else {
+    var notification = new Notification(title, {
+      icon: 'static/icons/150.png',
+      body: text,
+      sound: 'sounds/ding.mp3',
+      requireInteraction: true,
+      tag: 'require-interaction'
+    })
+
+    notification.onclick = function () {
+      window.focus()
+      window.open('http://pgorelease.nianticlabs.com/', '_blank')
+      notification.close()
     }
   }
 }
@@ -1957,6 +2019,7 @@ $(function () {
   window.setInterval(updateLabelDiffTime, 1000)
   window.setInterval(updateMap, 5000)
   window.setInterval(updateGeoLocation, 1000)
+  window.setInterval(checkCaptchas, 15000)
 
   createUpdateWorker()
 

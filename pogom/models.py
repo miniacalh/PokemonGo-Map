@@ -1008,6 +1008,16 @@ class WorkerStatus(BaseModel):
 
         return result
 
+    @staticmethod
+    def get_needs_captcha():
+        query = (WorkerStatus
+                 .select()
+                 .where(WorkerStatus.message.contains('manual captcha'))
+                 .dicts())
+
+        return list(query)
+    
+
 
 class SpawnPoint(BaseModel):
     id = CharField(primary_key=True, max_length=50)
